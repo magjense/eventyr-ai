@@ -1,0 +1,39 @@
+on:
+  github:
+    branches:
+      only: main
+
+jobs:
+  cloneRepo:
+    resources:
+      instance-type: C4
+    outputs:
+      repo:
+        type: volume
+    uses: git-checkout@v1
+    with:
+      url: context.event.github.url
+      ref: context.event.github.ref
+
+
+  train:
+    resources:
+      instance-type: P4000
+    needs:
+      - cloneRepo
+    inputs:
+      repo: cloneRepo.outputs.repo
+    outputs:
+      model:
+        type: dataset
+        with:
+          ref: gpt2-eventyr
+    uses: script@v1
+    with:
+      script: |-
+        cp -R /inputs/repo /ws
+        cd /ws
+        pip install -U torch
+        pip install -U transformers
+        python3 training.py
+      image: paperspace/nb-pytorch:22.02-py3

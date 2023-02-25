@@ -1,195 +1,63 @@
-# MNIST in TensorFlow
+# NLP-Text-Generation
 
-This repository demonstrates using Paperspace Gradient to train and deploy a deep learning model to recognize handwritten characters, which is a canonical sample problem in machine learning.
+Last updated: Sep 29th 2021
 
-We build a convolutional neural network to classify the [MNIST
-dataset](http://yann.lecun.com/exdb/mnist/) using the
-[tf.data](https://www.tensorflow.org/api_docs/python/tf/data),
-[tf.estimator.Estimator](https://www.tensorflow.org/api_docs/python/tf/estimator/Estimator),
-and
-[tf.layers](https://www.tensorflow.org/versions/r1.15/api_docs/python/tf)
-APIs.
+This is our GitHub repository for the Paperspace Gradient [NLP Text Generation Tutorial example](https://docs.paperspace.com/gradient/get-started/tutorials-list/example-workflow-nlp-text-generator). It runs the GPT-2 model from HuggingFace: https://huggingface.co/gpt2 .
 
-# Gradient Setup
+The example shows:
 
-## Single Node Training on Gradient
+ - Text generation from a modern deep-learning-based natural language processing model, GPT-2
+ - Gradient Projects linked to GitHub repositories
+ - Gradient Workflows
+ - Triggering a Workflow to rerun based upon a change in the repository, as needed in many production systems
+ - Versioned Gradient-managed Datasets as output
+f
+The repo contains 2 files: `nlp_text_generation.py` in the main directory, and `nlp_text_generation.yaml`in the `.gradient/workflows` directory. The YAML file contains the Gradient Workflow which in turn calls the Python script.
+f
+The Workflow is triggered to run when the YAML file is present in the `.gradient/workflows/` directory, and the repo is linked to the user's Gradient project. The Workflow clones this repo and then in turn calls the Python script. The script outputs the generated text to the file `outputs.txt` in the Gradient-managed Dataset `demo-dataset`, which the user can then view.
 
-### Install Gradient CLI
+The Workflow runs on the Paperspace HuggingFace NLP container (`paperspace/transformers-gpu:0.4.0`).
 
-```
-pip install -U gradient
-```
+## Steps to run this tutorial
 
-[Please check our documentation on how to install Gradient CLI and obtain an API Key](https://docs.paperspace.com/gradient/get-started/install-the-cli)
+*Easiest way: clone the example repository*
 
-### Create project and get the project id
+Assuming you are [up and running with Gradient](https://docs.paperspace.com/gradient/get-started/quick-start), and have the **GitHub app** installed to your GitHub username, this Project runs as a sample repository.
 
-[Please check our documentation on how to create a project and get the project id](https://docs.paperspace.com/gradient/get-started/managing-projects)
-Your project ID will look like `pr1234567`.
+ - [Create a Project](https://docs.paperspace.com/gradient/get-started/quick-start#first-create-a-project)
+ - Under the Workflows tab of the Project, click Create a Workflow
+ - In the illustrated list of Projects in the central panel, select the one for "NLP Text Generation"
+ - Select your GitHub username from the Account and Organizations dropdown list
+ - Choose a repository name
+ - Click "Create Project"
 
-### Create and start a workflow
+The Workflow will then run.
 
-```
-gradient workflows create --name mnist-sample --projectId pr1234567
-+--------------+--------------------------------------+
-| Name         | ID                                   |
-+--------------+--------------------------------------+
-| mnist-sample | 12345678-1234-1234-1234-1234567890ab |
-+--------------+--------------------------------------+
+*Alternative method: create your own repo fork first*
 
-```
+You can also fork your own copy of this tutorial repo, then create a repo-linked Workflow that points to the fork:
 
-Clone this repo, and change directoru into it, or copy [mnist-sample.yaml](mnist-sample.yaml) to your local machine.
+ - Navigate to https://github.com/gradient-ai/NLP-Text-Generation in your browser
+ - In the resulting GitHub GUI page, click "Fork" in the top right
+ - Follow the usual GitHub procedure by selecting your GitHub account to fork the repo to
+ - [Create a Project](https://docs.paperspace.com/gradient/get-started/quick-start#first-create-a-project)
+ - Under the Workflows tab of the Project, click Create a Workflow
+ - Instead of selecting the sample repo for "NLP Text Generation", click "import an existing gradient repository"
+ - Choose the repo fork you just created from the dropdown list
+ - This will take you to the "Let's create a Workflow" screen. Change any of the files in your forked repo to trigger the `nlp_text_generation.yaml` file under `.gradient/workflows/` to run. For example, add a few characters to the readme.md.
 
-Then run the workflow using the workflow ID from the create workflow command above.
+The result should be the same as above.
 
-```
-gradient workflows run --id 12345678-1234-1234-1234-1234567890ab --path mnist-sample.yaml
-```
+*Note*: When running the Workflow from a project linked to your own fork of the repo, it will still be cloning from the original location https://github.com/gradient-ai/NLP-Text-Generation, unless you choose to alter the location that the Workflow points to, which is optional.
 
-That's it!
+### Altering the model settings and triggering a Workflow rerun
 
-### Exporting a Model for inference
+The ability to trigger Workflow reruns is useful in several situations, especially more MLOps and production-oriented ones where the state of the collection of code, data, deployments, models, and other components should be consistent.
 
-#### Export your Tensorflow model
+Changing the model settings can be used to trigger a rerun of the model. The 4 values under "Settings" in the `nlp_text_generation.py` script (random seed, maximum text length, number of returned text sequences, and the initial text sentence) can be altered to generate different text.
 
-In order to serve a Tensorflow model, simply export a SavedModel from your Tensorflow program. [SavedModel](https://github.com/tensorflow/tensorflow/blob/master/tensorflow/python/saved_model/README.md) is a language-neutral, recoverable, hermetic serialization format that enables higher-level systems and tools to produce, consume, and transform TensorFlow models.
+If the resulting updated version of the `nlp_text_generation.py` file is uploaded to the repo main directory to replace the one present, and the project remains linked to the repo, the Workflow will be rerun. A new `output.txt` file is generated, and placed in a new version of the output Gradient-managed Dataset.
 
-Please refer to [Tensorflow documentation](https://www.tensorflow.org/guide/saved_model#save_and_restore_models) for detailed instructions on how to export SavedModels.
+## Next Steps
 
-#### Example code showing how to export your model:
-
-```
-tf.estimator.train_and_evaluate(mnist_classifier, train_spec, eval_spec)
-
-#Starting to Export model
-image = tf.placeholder(tf.float32, [None, 28, 28])
-input_fn = tf.estimator.export.build_raw_serving_input_receiver_fn({
-            'image': image,
-        })
-mnist_classifier.export_savedmodel(<export directory>,
-                                    input_fn,
-                                    strip_default_attrs=True)
-#Model Exported
-```
-
-We use TensorFlow's [SavedModelBuilder module](https://github.com/tensorflow/tensorflow/blob/master/tensorflow/python/saved_model/builder.py) to export the model. SavedModelBuilder saves a "snapshot" of the trained model to reliable storage so that it can be loaded later for inference.
-
-For details on the SavedModel format, please see the documentation at [SavedModel README.md](https://github.com/tensorflow/tensorflow/blob/master/tensorflow/python/saved_model/README.md).
-
-For export directory, be sure to set it to `PS_MODEL_PATH` when running a model deployment on Gradient:
-
-```
-export_dir = os.path.abspath(os.environ.get('PS_MODEL_PATH'))
-```
-
-You can also use Gradient SDK to ensure you have the correct path:
-
-```
-from gradient_sdk.utils import data_dir, model_dir, export_dir
-```
-
-# (Optional) Local Setup using a Virtual Environment
-
-Users sometimes run into local machine environment issues when trying to use Python. A common solution for this is to create and use a Python virtual environment to run Python from within. To do so:
-
-1. Create and activate a Python virtual environment (we recommend using python3.7+):
-
-```
-cd mnist-sample
-
-python3 -m venv venv
-
-source venv/bin/activate
-```
-
-2. Install the required Python packages:
-
-```
-pip install -r requirements-local.txt
-```
-
-# Local Training
-
-To train a the mnist model locally:
-
-1. Make sure you have the latest version of TensorFlow installed.
-
-2. Also make sure you've [added the models folder to your Python path](https://github.com/mlcommons/training/blob/master/image_classification/tensorflow/official/README.md#running-the-models); otherwise you may encounter an error like `ImportError: No module named mnist`.
-
-3. Download the code from GitHub:
-
-```
-git clone git@github.com:Paperspace/mnist-sample.git
-```
-
-4. Start training the model:
-
-```
-python mnist.py
-```
-
-_Note: local training will take a long time, so be prepared to wait!_
-
-If you want to shorten model training time, you can change the max steps parameter:
-
-```
-python mnist.py --max_steps=1500
-```
-
-The mnist dataset is downloaded to the `./data` directory.
-
-Model results are stored in the `./models` directory.
-
-Both directories can be safely deleted if you would like to start the training over from the beginning.
-
-## Exporting the model to a specific directory
-
-You can export the model into a specific directory, in the Tensorflow [SavedModel](https://www.tensorflow.org/guide/saved_model) format, by using the argument `--export_dir`:
-
-```
-python mnist.py --export_dir /tmp/mnist_saved_model
-```
-
-If no export directory is specified, the model is saved to a timestamped directory under `./models` subdirectory (e.g. `mnist-sample/models/1513630966/`).
-
-## Testing a Tensorflow Serving-deployed model on your local machine using Docker
-
-Open another terminal window and run the following in the directory where you cloned this repo:
-
-```
-docker run -t --rm -p 8501:8501 -v "$PWD/models:/models/mnist" -e MODEL_NAME=mnist tensorflow/serving
-```
-
-Now you can test the local inference endpoint by running:
-
-```
-python serving_rest_client_test.py
-```
-
-Optionally you can provide a path to an image file to run a prediction on:
-
-```
-python serving_rest_client_test.py --path example3.png
-```
-
-Once you've completed local testing using the tensorflow/serving docker container, stop the running container as follows:
-
-```
-docker ps
-docker kill <container-id-or-name>
-```
-
-## Training the model on a node with a GPU for use with Tensorflow Serving on a node with only a CPU
-
-If you are training on Tensorflow using a GPU but would like to export the model for use in Tensorflow Serving on a CPU-only server, you can train and/or export the model using `--data_format=channels_last`:
-
-```
-python mnist.py --data_format=channels_last
-```
-
-The SavedModel will be saved in a timestamped directory under `models` subdirectory (e.g. `mnist-sample/models/1513630966/`).
-
-## Inspecting and getting predictions with the SavedModel file
-
-You can also use the [`saved_model_cli`](https://www.tensorflow.org/guide/saved_model#cli_to_inspect_and_execute_savedmodel) tool to inspect and execute the SavedModel.
+See the [documentation page for this tutorial](https://docs.paperspace.com/gradient/get-started/tutorials-list/example-workflow-nlp-text-generator) for some suggested next steps (e.g., you can run the newer+larger GPT-Neo instead of GPT-2). 
