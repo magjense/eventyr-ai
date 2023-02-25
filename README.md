@@ -18,7 +18,7 @@ The Workflow is triggered to run when the YAML file is present in the `.gradient
 
 The Workflow runs on the Paperspace HuggingFace NLP container (`paperspace/transformers-gpu:0.4.0`).
 
-## Steps to run this tutorial
+## Steps to run this tutor
 
 *Easiest way: clone the example repository*
 
